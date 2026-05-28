@@ -1,0 +1,460 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Codex config for the Low-Altitude Flight Simulation / FlightCore project.
+#
+# Uses the newer beta permission-profile system:
+#   default_permissions + [permissions.<profile>]
+# Do NOT combine this with older sandbox_mode / sandbox_workspace_write keys.
+#
+# GitHub is domain-allowlisted here. Repository-level preference should be
+# enforced in AGENTS.md or project instructions, because domain rules cannot
+# reliably restrict access to individual GitHub repositories.
+
+approval_policy = "on-request"
+default_permissions = "low-alt-sim-dev"
+web_search = "cached"
+allow_login_shell = false
+model_reasoning_effort = "high"
+personality = "pragmatic"
+
+[permissions.low-alt-sim-dev]
+description = "Workspace-write profile for low-altitude flight simulation development with curated aviation, simulation, UTM, and research network access."
+extends = ":workspace"
+
+[permissions.low-alt-sim-dev.workspace_roots]
+"." = true
+
+[permissions.low-alt-sim-dev.filesystem]
+":minimal" = "read"
+glob_scan_max_depth = 6
+
+[permissions.low-alt-sim-dev.filesystem.":workspace_roots"]
+"." = "write"
+".codex" = "read"
+".git" = "read"
+".github" = "read"
+".devcontainer" = "read"
+".vscode" = "read"
+".idea" = "read"
+"docs" = "write"
+"src" = "write"
+"tests" = "write"
+"examples" = "write"
+"scripts" = "write"
+"configs" = "write"
+"data" = "write"
+"notebooks" = "write"
+
+# Sensitive files: deny both read and write, even inside writable workspace roots.
+".env" = "deny"
+".env.*" = "deny"
+"*.env" = "deny"
+"*/*.env" = "deny"
+"*/*/*.env" = "deny"
+"**/*.env" = "deny"
+"**/.env" = "deny"
+"**/.env.*" = "deny"
+"**/*secret*" = "deny"
+"**/*secrets*" = "deny"
+"**/*token*" = "deny"
+"**/*credential*" = "deny"
+"**/*credentials*" = "deny"
+"**/*password*" = "deny"
+"**/id_rsa" = "deny"
+"**/id_ed25519" = "deny"
+"**/*.pem" = "deny"
+"**/*.key" = "deny"
+"**/*.p12" = "deny"
+"**/*.pfx" = "deny"
+"**/auth.json" = "deny"
+"**/credentials.json" = "deny"
+"**/service-account*.json" = "deny"
+"**/config/secrets.*" = "deny"
+"**/.aws" = "deny"
+"**/.azure" = "deny"
+"**/.gcloud" = "deny"
+"**/.ssh" = "deny"
+"**/.gnupg" = "deny"
+
+[permissions.low-alt-sim-dev.network]
+enabled = true
+mode = "limited"
+allow_local_binding = false
+allow_upstream_proxy = false
+dangerously_allow_non_loopback_proxy = false
+dangerously_allow_all_unix_sockets = false
+enable_socks5 = false
+enable_socks5_udp = false
+
+[permissions.low-alt-sim-dev.network.domains]
+
+# =============================================================================
+# OpenAI / Codex official docs and APIs
+# =============================================================================
+"developers.openai.com" = "allow"
+"platform.openai.com" = "allow"
+"api.openai.com" = "allow"
+"help.openai.com" = "allow"
+"trust.openai.com" = "allow"
+"openai.com" = "allow"
+"**.openai.com" = "allow"
+
+# =============================================================================
+# Source hosting and raw artifacts
+# =============================================================================
+# Repository-level preferences are defined in AGENTS.md, not here.
+# This section only permits access to source-hosting domains.
+"github.com" = "allow"
+"**.github.com" = "allow"
+"githubusercontent.com" = "allow"
+"**.githubusercontent.com" = "allow"
+"gitlab.com" = "allow"
+"**.gitlab.com" = "allow"
+"bitbucket.org" = "allow"
+"**.bitbucket.org" = "allow"
+"sourceforge.net" = "allow"
+"**.sourceforge.net" = "allow"
+
+# Repository-level preferences are maintained in AGENTS.md.
+# This file only enforces domain-level network access.
+
+# =============================================================================
+# Python packaging, build, test, typing, formatting
+# =============================================================================
+"pypi.org" = "allow"
+"files.pythonhosted.org" = "allow"
+"pythonhosted.org" = "allow"
+"python.org" = "allow"
+"**.python.org" = "allow"
+"packaging.python.org" = "allow"
+"pip.pypa.io" = "allow"
+"setuptools.pypa.io" = "allow"
+"wheel.readthedocs.io" = "allow"
+"build.pypa.io" = "allow"
+"hatch.pypa.io" = "allow"
+"python-poetry.org" = "allow"
+"astral.sh" = "allow"
+"docs.astral.sh" = "allow"
+"ruff.rs" = "allow"
+"mypy-lang.org" = "allow"
+"mypy.readthedocs.io" = "allow"
+"pytest.org" = "allow"
+"docs.pytest.org" = "allow"
+"hypothesis.readthedocs.io" = "allow"
+"coverage.readthedocs.io" = "allow"
+"pydantic.dev" = "allow"
+"docs.pydantic.dev" = "allow"
+"attrs.org" = "allow"
+"www.attrs.org" = "allow"
+
+# =============================================================================
+# Python scientific / numerical / plotting stack
+# =============================================================================
+"numpy.org" = "allow"
+"scipy.org" = "allow"
+"pandas.pydata.org" = "allow"
+"matplotlib.org" = "allow"
+"scikit-learn.org" = "allow"
+"numba.pydata.org" = "allow"
+"sympy.org" = "allow"
+"networkx.org" = "allow"
+"jupyter.org" = "allow"
+"ipython.org" = "allow"
+"plotly.com" = "allow"
+"dash.plotly.com" = "allow"
+
+# =============================================================================
+# JavaScript / Cesium / frontend visualization
+# =============================================================================
+"nodejs.org" = "allow"
+"npmjs.com" = "allow"
+"**.npmjs.com" = "allow"
+"registry.npmjs.org" = "allow"
+"yarnpkg.com" = "allow"
+"pnpm.io" = "allow"
+"vite.dev" = "allow"
+"vitejs.dev" = "allow"
+"typescriptlang.org" = "allow"
+"www.typescriptlang.org" = "allow"
+"webpack.js.org" = "allow"
+"rollupjs.org" = "allow"
+"unpkg.com" = "allow"
+"jsdelivr.net" = "allow"
+"**.jsdelivr.net" = "allow"
+"cesium.com" = "allow"
+"**.cesium.com" = "allow"
+"threejs.org" = "allow"
+"deck.gl" = "allow"
+"vis.gl" = "allow"
+"maplibre.org" = "allow"
+"mapbox.com" = "allow"
+"**.mapbox.com" = "allow"
+"turfjs.org" = "allow"
+
+# =============================================================================
+# GIS / geometry / terrain / coordinate conversion / maps
+# =============================================================================
+"shapely.readthedocs.io" = "allow"
+"pyproj4.github.io" = "allow"
+"geographiclib.sourceforge.io" = "allow"
+"geopandas.org" = "allow"
+"fiona.readthedocs.io" = "allow"
+"rasterio.readthedocs.io" = "allow"
+"proj.org" = "allow"
+"epsg.io" = "allow"
+"ogc.org" = "allow"
+"www.ogc.org" = "allow"
+"geojson.org" = "allow"
+"gdal.org" = "allow"
+"openstreetmap.org" = "allow"
+"**.openstreetmap.org" = "allow"
+"overpass-api.de" = "allow"
+"geofabrik.de" = "allow"
+"download.geofabrik.de" = "allow"
+"naturalearthdata.com" = "allow"
+"www.naturalearthdata.com" = "allow"
+"opentopography.org" = "allow"
+"portal.opentopography.org" = "allow"
+"esri.com" = "allow"
+"**.esri.com" = "allow"
+"opendata.arcgis.com" = "allow"
+
+# =============================================================================
+# Weather / atmosphere / terrain / public environmental data
+# =============================================================================
+"noaa.gov" = "allow"
+"**.noaa.gov" = "allow"
+"weather.gov" = "allow"
+"www.weather.gov" = "allow"
+"aviationweather.gov" = "allow"
+"www.aviationweather.gov" = "allow"
+"usgs.gov" = "allow"
+"**.usgs.gov" = "allow"
+"copernicus.eu" = "allow"
+"**.copernicus.eu" = "allow"
+"dataspace.copernicus.eu" = "allow"
+"cds.climate.copernicus.eu" = "allow"
+"ecmwf.int" = "allow"
+"www.ecmwf.int" = "allow"
+
+# =============================================================================
+# Aviation authorities, regulations, standards, and official safety sources
+# =============================================================================
+"faa.gov" = "allow"
+"**.faa.gov" = "allow"
+"faadronezone.faa.gov" = "allow"
+"ecfr.gov" = "allow"
+"www.ecfr.gov" = "allow"
+"federalregister.gov" = "allow"
+"www.federalregister.gov" = "allow"
+"regulations.gov" = "allow"
+"www.regulations.gov" = "allow"
+"transportation.gov" = "allow"
+"www.transportation.gov" = "allow"
+"ntsb.gov" = "allow"
+"www.ntsb.gov" = "allow"
+"icao.int" = "allow"
+"www.icao.int" = "allow"
+"easa.europa.eu" = "allow"
+"www.easa.europa.eu" = "allow"
+"eurocontrol.int" = "allow"
+"www.eurocontrol.int" = "allow"
+"caa.co.uk" = "allow"
+"www.caa.co.uk" = "allow"
+"jarus-rpas.org" = "allow"
+"www.jarus-rpas.org" = "allow"
+"sesarju.eu" = "allow"
+"www.sesarju.eu" = "allow"
+"astm.org" = "allow"
+"www.astm.org" = "allow"
+"rtca.org" = "allow"
+"www.rtca.org" = "allow"
+"eurocae.net" = "allow"
+"www.eurocae.net" = "allow"
+"sae.org" = "allow"
+"www.sae.org" = "allow"
+"iso.org" = "allow"
+"www.iso.org" = "allow"
+"ansi.org" = "allow"
+"www.ansi.org" = "allow"
+
+# =============================================================================
+# NASA / aerospace research / rotorcraft / design
+# =============================================================================
+"nasa.gov" = "allow"
+"**.nasa.gov" = "allow"
+"ntrs.nasa.gov" = "allow"
+"sti.nasa.gov" = "allow"
+"rotorcraft.arc.nasa.gov" = "allow"
+"flightlab.com" = "allow"
+"www.flightlab.com" = "allow"
+"searchandrescue2.github.io" = "allow"
+"openvsp.org" = "allow"
+"www.openvsp.org" = "allow"
+"vspu.larc.nasa.gov" = "allow"
+
+# =============================================================================
+# Flight dynamics / general aviation / aircraft simulators
+# =============================================================================
+"jsbsim-team.github.io" = "allow"
+"jsbsim.sourceforge.net" = "allow"
+"flightgear.org" = "allow"
+"www.flightgear.org" = "allow"
+"wiki.flightgear.org" = "allow"
+"forum.flightgear.org" = "allow"
+"developer.x-plane.com" = "allow"
+"x-plane.com" = "allow"
+"www.x-plane.com" = "allow"
+
+# =============================================================================
+# Autopilot / MAVLink / UAV flight control
+# =============================================================================
+"px4.io" = "allow"
+"docs.px4.io" = "allow"
+"discuss.px4.io" = "allow"
+"ardupilot.org" = "allow"
+"mavlink.io" = "allow"
+"mavsdk.mavlink.io" = "allow"
+"paparazziuav.org" = "allow"
+"docs.paparazziuav.org" = "allow"
+"rosflight.org" = "allow"
+"docs.rosflight.org" = "allow"
+"byu-magicc.github.io" = "allow"
+"nextpilot.org" = "allow"
+"www.nextpilot.org" = "allow"
+"bitcraze.io" = "allow"
+"www.bitcraze.io" = "allow"
+"betaflight.com" = "allow"
+"inavflight.github.io" = "allow"
+
+# =============================================================================
+# UAV / multirotor / robotics simulation
+# =============================================================================
+"gazebosim.org" = "allow"
+"classic.gazebosim.org" = "allow"
+"docs.ros.org" = "allow"
+"index.ros.org" = "allow"
+"ros.org" = "allow"
+"www.ros.org" = "allow"
+"openrobotics.org" = "allow"
+"microsoft.github.io" = "allow"
+"iamaisim.github.io" = "allow"
+"rpg.ifi.uzh.ch" = "allow"
+"uzh-rpg.github.io" = "allow"
+"flightmare.readthedocs.io" = "allow"
+"agilicious.readthedocs.io" = "allow"
+"pegasussimulator.github.io" = "allow"
+"learnsyslab.github.io" = "allow"
+"pybullet.org" = "allow"
+"cyberbotics.com" = "allow"
+"www.cyberbotics.com" = "allow"
+"coppeliarobotics.com" = "allow"
+"www.coppeliarobotics.com" = "allow"
+"docs.omniverse.nvidia.com" = "allow"
+"docs.isaacsim.omniverse.nvidia.com" = "allow"
+
+# =============================================================================
+# Air traffic management / UTM / performance / ADS-B
+# =============================================================================
+"bluesky.cns.tudelft.nl" = "allow"
+"tudelft.nl" = "allow"
+"research.tudelft.nl" = "allow"
+"pure.tudelft.nl" = "allow"
+"openap.dev" = "allow"
+"mode-s.org" = "allow"
+"opensky-network.org" = "allow"
+"opensky-network.github.io" = "allow"
+"unicef.github.io" = "allow"
+
+# =============================================================================
+# Traffic and mobility simulators
+# =============================================================================
+"sumo.dlr.de" = "allow"
+"eclipse.dev" = "allow"
+"eclipse.org" = "allow"
+"cityflow-project.github.io" = "allow"
+"flow-project.github.io" = "allow"
+"opentrafficlab.github.io" = "allow"
+"matsim.org" = "allow"
+"www.matsim.org" = "allow"
+"carla.org" = "allow"
+
+# =============================================================================
+# GPU / acceleration / compute backends
+# =============================================================================
+"nvidia.com" = "allow"
+"developer.nvidia.com" = "allow"
+"docs.nvidia.com" = "allow"
+"pytorch.org" = "allow"
+"cupy.dev" = "allow"
+"docs.cupy.dev" = "allow"
+"rapids.ai" = "allow"
+"docs.rapids.ai" = "allow"
+"jax.readthedocs.io" = "allow"
+"docs.jax.dev" = "allow"
+
+# =============================================================================
+# Academic search / DOI / preprints / publishers
+# =============================================================================
+"doi.org" = "allow"
+"dx.doi.org" = "allow"
+"crossref.org" = "allow"
+"www.crossref.org" = "allow"
+"arxiv.org" = "allow"
+"export.arxiv.org" = "allow"
+"openreview.net" = "allow"
+"proceedings.mlr.press" = "allow"
+"semanticscholar.org" = "allow"
+"www.semanticscholar.org" = "allow"
+"openalex.org" = "allow"
+"api.openalex.org" = "allow"
+"orcid.org" = "allow"
+"ieee.org" = "allow"
+"www.ieee.org" = "allow"
+"ieeexplore.ieee.org" = "allow"
+"acm.org" = "allow"
+"dl.acm.org" = "allow"
+"aiaa.org" = "allow"
+"arc.aiaa.org" = "allow"
+"sciencedirect.com" = "allow"
+"www.sciencedirect.com" = "allow"
+"elsevier.com" = "allow"
+"www.elsevier.com" = "allow"
+"springer.com" = "allow"
+"link.springer.com" = "allow"
+"mdpi.com" = "allow"
+"www.mdpi.com" = "allow"
+"nature.com" = "allow"
+"www.nature.com" = "allow"
+"wiley.com" = "allow"
+"onlinelibrary.wiley.com" = "allow"
+"tandfonline.com" = "allow"
+"www.tandfonline.com" = "allow"
+"cambridge.org" = "allow"
+"www.cambridge.org" = "allow"
+"journals.sagepub.com" = "allow"
+"frontiersin.org" = "allow"
+"www.frontiersin.org" = "allow"
+"asmedigitalcollection.asme.org" = "allow"
+"science.org" = "allow"
+"www.science.org" = "allow"
+"plos.org" = "allow"
+"journals.plos.org" = "allow"
+
+# =============================================================================
+# Explicit deny examples: tracking, ads, and broad social domains
+# =============================================================================
+"*.doubleclick.net" = "deny"
+"**.doubleclick.net" = "deny"
+"*.google-analytics.com" = "deny"
+"**.google-analytics.com" = "deny"
+"*.googletagmanager.com" = "deny"
+"**.googletagmanager.com" = "deny"
+"*.facebook.com" = "deny"
+"**.facebook.com" = "deny"
+"*.twitter.com" = "deny"
+"**.twitter.com" = "deny"
+"*.x.com" = "deny"
+"**.x.com" = "deny"
+"*.tiktok.com" = "deny"
+"**.tiktok.com" = "deny"
