@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversation Record Workflow</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --text: #1f2933;
+      --muted: #52616b;
+      --line: #d9e2ec;
+      --accent: #2563eb;
+      --surface: #f8fafc;
+    }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 64px;
+    }
+
+    h1,
+    h2 {
+      line-height: 1.25;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: 2rem;
+    }
+
+    h2 {
+      margin-top: 32px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+      font-size: 1.25rem;
+    }
+
+    p,
+    li {
+      color: var(--text);
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    pre {
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      padding: 16px;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Conversation Record Workflow</h1>
+
+    <h2>Topic</h2>
+    <p>This topic defines a persistent workflow for recording agreed conversation outcomes in this repository.</p>
+
+    <h2>Confirmed Decisions</h2>
+    <ul>
+      <li>Conversation records live under <code>conversation-records/</code>.</li>
+      <li>Each topic gets its own folder named from the conversation content, using lowercase English words joined with hyphens.</li>
+      <li>Each topic folder keeps a live Markdown record named <code>record.md</code>.</li>
+      <li>Each topic folder keeps a presentation HTML file named <code>record.html</code>.</li>
+      <li><code>record.md</code> is updated while the conversation develops.</li>
+      <li><code>record.html</code> is updated after the Markdown record is complete enough to present.</li>
+      <li>When a topic needs an illustration, draw.io is the preferred format.</li>
+      <li>Editable <code>.drawio</code> files live in the same topic folder as the topic record.</li>
+      <li>The Markdown and HTML records link to the topic's draw.io files when diagrams are included.</li>
+      <li>Records focus on confirmed, positive, actionable decisions: what to do, what has been agreed, and what the current conclusion is.</li>
+      <li>During conversation, the assistant should use high-intensity Socratic questioning to clarify goals, boundaries, success criteria, evidence, tradeoffs, and next action before treating a topic as settled.</li>
+      <li><code>AGENTS.md</code> stores the workflow rule, while actual topic records stay in <code>conversation-records/</code>.</li>
+      <li><code>AGENTS.md</code> is appended only; existing content is preserved.</li>
+    </ul>
+
+    <h2>Folder Pattern</h2>
+    <pre><code>conversation-records/
+  &lt;topic-slug&gt;/
+    record.md
+    record.html
+    &lt;topic-slug&gt;.drawio</code></pre>
+
+    <h2>Illustration</h2>
+    <p>Conversation Record Workflow flow:</p>
+    <p><img src="conversation-record-workflow.svg" alt="Conversation Record Workflow flowchart" style="max-width:100%;height:auto;border:1px solid var(--line);border-radius:4px;padding:8px;background:var(--surface)"/></p>
+    <p>The diagram captures the agreed flow: discuss deeply, confirm positive decisions, update <code>record.md</code>, add draw.io diagrams when useful, and refresh <code>record.html</code> when the topic is ready to present.</p>
+    <p>Editable source: <a href="conversation-record-workflow.drawio">conversation-record-workflow.drawio</a> (open in <a href="https://app.diagrams.net">app.diagrams.net</a> to edit).</p>
+
+    <h2>Success Criteria</h2>
+    <ul>
+      <li>The workflow can be followed by future agents during normal chat.</li>
+      <li>Topic records stay easy to browse because each topic has its own folder.</li>
+      <li>Markdown remains the source record during discussion.</li>
+      <li>HTML provides a readable presentation view when a topic is mature.</li>
+      <li>Draw.io keeps formal diagrams editable.</li>
+    </ul>
+  </main>
+</body>
+</html>

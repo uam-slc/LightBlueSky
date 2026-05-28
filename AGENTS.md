@@ -897,3 +897,25 @@ sequence diagram, UML, ERD, topology, editable diagram, mxGraphModel,
 * 不得覆盖 `AGENTS.md` 原有内容。
 
 <!-- codex-tool-router:end -->
+
+---
+
+# Conversation Record Workflow
+
+When the user asks to preserve a conversation outcome, maintain a topic record under `conversation-records/`.
+
+Rules:
+
+- Use one topic folder per coherent topic: `conversation-records/<topic-slug>/`.
+- Name topic folders in lowercase English with hyphens, based on the conversation content.
+- Keep the live Markdown record at `conversation-records/<topic-slug>/record.md`.
+- When the topic is mature enough to present, update `conversation-records/<topic-slug>/record.html` from the Markdown record.
+- Record only confirmed, positive, actionable decisions: what to do, what has been agreed, and what the current conclusion is.
+- Keep the record focused on settled direction, implementation intent, success criteria, diagrams, and next steps.
+- Use high-intensity Socratic questioning during the conversation to clarify goals, boundaries, success criteria, evidence, tradeoffs, and next action before treating a topic as settled.
+- Update `record.md` when the user explicitly asks to add something to the record or uses an equivalent instruction.
+- Prefer draw.io for illustrations. Store editable `.drawio` files in the same topic folder.
+- Export a corresponding `.svg` from the `.drawio` file and commit it alongside.
+- In `record.html`, embed the SVG with `<img src="<topic>.svg">` so the diagram is visible directly.
+- Keep the link to the editable `.drawio` source below the image for future edits.
+- Mermaid may be used as temporary or lightweight structure, while formal recorded diagrams should be captured as draw.io when useful.
