@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "created_at": "2026-05-30T17:41:46Z",
+  "dataset_name": "global_wgs84_ellipsoid_3d_map",
+  "dataset_scope": "global",
+  "horizontal_crs": "EPSG:4326",
+  "coordinate_order": "lon_lat",
+  "vertical_datum": "WGS84_ELLIPSOID",
+  "height_unit": "meter",
+  "terrain_dir": "terrain/",
+  "buildings_dir": "buildings/",
+  "terrain_source": "FABDEM",
+  "buildings_source": "Overture Maps Buildings",
+  "geoid_model": "EGM2008",
+  "geoid_provider": "GeographicLib",
+  "floor_height_m": 3.0,
+  "terrain_tile_scheme": "source FABDEM tile id, emitted as <terrain_tile_id>.cog.tif",
+  "building_partition_scheme": "source Overture partition id, emitted as <building_partition_id>.geoparquet",
+  "generation_parameters": {
+    "terrain_height_formula": "terrain_h_ellipsoid_m = H_fabdem_m + N_egm2008_m",
+    "building_top_formula": "top_h_ellipsoid_m = base_h_ellipsoid_m + height_m",
+    "terrain_sample_method_default": "footprint_points_median"
+  },
+  "license_and_attribution": {
+    "FABDEM": "Retain FABDEM license and attribution from the source distribution.",
+    "Overture Maps Buildings": "Retain Overture Maps license and attribution from the source release.",
+    "EGM2008": "Retain GeographicLib and EGM2008 model attribution."
+  }
+}

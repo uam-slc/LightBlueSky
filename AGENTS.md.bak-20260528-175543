@@ -1,0 +1,647 @@
+# AGENTS.md
+
+# Project Context
+
+This repository is for a low-altitude 3D flight simulation platform with an independent `FlightCore` package.
+
+The current target architecture is:
+
+- Internal runtime coordinate frame: local NED.
+- FlightCore is the authoritative source for aircraft dynamics, kinematics, public phases, internal subphases, transition, back-transition, and landing behavior.
+- Platform code provides WorldState, Runtime Store, CommandBus, MissionState, collision detection, recording, visualization adapters, and external APIs.
+- User velocity commands are valid only in `NAV`.
+- `TAKEOFF`, `LANDING`, and `TRANSITION` are managed phases controlled by FlightCore.
+- `takeoff()` and `land()` are one-shot, uncancelable commands unless the user explicitly asks for an emergency override feature.
+- `latest back-transition` for compound-wing and tiltrotor aircraft is a low-level FlightCore safety takeover. When the formula trigger surface is reached during landing, FlightCore must force the aircraft into the managed landing/back-transition flow even if waypoint or velocity commands remain unfinished.
+- Default numerical integration is semi-implicit Euler. RK2/midpoint may be implemented as an optional high-accuracy validation mode.
+- Runtime hot paths should use GPU-friendly SoA arrays. Pydantic is for config validation, not per-tick runtime state.
+- Collision detection should use dynamics old/new state and acceleration-inflated Dynamic Swept AABB by default.
+
+---
+
+# Agent Operating Principles
+
+For non-trivial coding tasks:
+
+- Surface assumptions, ambiguity, and tradeoffs before editing. Ask when ambiguity could cause broad or irreversible changes.
+- Prefer the smallest implementation that satisfies the request. Do not add speculative features, abstractions, configurability, or dependencies.
+- Keep edits surgical. Every changed line should trace directly to the user's request.
+- Match existing style and ownership boundaries even when a different style looks cleaner.
+- Define success criteria and verification before or during implementation. For bug fixes, reproduce the issue first when practical; for refactors, verify behavior before and after.
+- Remove only unused imports, variables, functions, files, or comments made obsolete by the current change. Mention unrelated cleanup opportunities instead of applying them.
+- For trivial typo fixes, obvious one-line changes, and documentation-only edits, use judgment and avoid unnecessary ceremony.
+
+---
+
+# Codex Config Relationship
+
+Use `config.toml` for machine-enforced permissions:
+
+- filesystem read/write policy
+- sensitive file deny rules
+- shell/network domain allowlist
+- web search mode
+
+Use this `AGENTS.md` for project behavior:
+
+- Git/GitHub workflow
+- branch and commit policy
+- preferred external repositories and documentation
+- source reliability rules
+- project architecture guardrails
+
+Do not put long preferred GitHub repository lists into `config.toml` as executable settings. `config.toml` can allow `github.com`, but repository-level preference must be enforced here.
+
+---
+
+# External Source and Research Policy
+
+Agents may use external sources only when relevant to the current task and allowed by `config.toml`.
+
+General source priority:
+
+1. Official documentation, standards, regulations, and primary project repositories.
+2. Maintained open-source repositories with clear licenses and active issue/history context.
+3. Peer-reviewed papers, technical reports, NASA/FAA/EASA/ICAO/Eurocontrol/JARUS/ASTM/RTCA/SAE sources.
+4. Secondary tutorials, blog posts, forum threads, or examples only as supporting context.
+
+Rules:
+
+- Prefer official documentation over random examples.
+- Prefer small, focused reference checks over broad web browsing.
+- Do not copy substantial third-party code into this repository unless the user explicitly asks and license compatibility is checked.
+- If adapting an algorithm from a repository or paper, summarize the source and keep the implementation original.
+- Do not add a new runtime dependency just because a reference repository uses it. Ask or justify clearly.
+- When a field, model, or algorithm is inferred from external material, document the assumption in project docs or code comments.
+- If sources disagree, prefer aviation standards, official simulator documentation, or primary repository docs.
+
+---
+
+# Preferred External Repositories and Documentation
+
+These sources are preferred references for architecture, validation, implementation patterns, and terminology. They are not automatic dependencies.
+
+## ATM / UTM / Traffic / Aircraft Performance
+
+- TUDelft-CNS-ATM/bluesky
+- TUDelft-CNS-ATM/bluesky-gym
+- junzis/openap
+- junzis/pyModeS
+- openskynetwork/opensky-api
+- grvcTeam/gauss
+- openutm/flight-blender
+- utmimplementationus/getstarted
+
+Use these for:
+
+- air traffic flow
+- ATM/UTM concepts
+- route and trajectory logic
+- conflict detection concepts
+- ADS-B / Mode-S data handling
+- aircraft performance envelopes
+
+## Autopilot / Flight Control
+
+- PX4/PX4-Autopilot
+- ArduPilot/ardupilot
+- paparazzi/paparazzi
+- rosflight/rosflight
+- rosflight/rosflight_ros_pkgs
+- rosflight/rosplane
+- MatrixPilot/MatrixPilot
+- nextpilot/nextpilot-flight-control
+
+Use these for:
+
+- flight mode organization
+- mission mode behavior
+- MAVLink concepts
+- fixed-wing, multirotor, VTOL, and helicopter control architecture
+- failsafe and command handling patterns
+- SITL/HITL interface concepts
+
+Do not attempt to clone a real autopilot control stack into this project. This project uses reduced-order FlightCore models.
+
+## Fixed-Wing / General Aviation / Flight Dynamics Models
+
+- JSBSim-Team/jsbsim
+- JSBSim-Team/jsbsim-reference-manual
+- JSBSim-Team/aeromatic
+- FlightGear/flightgear
+- FlightGear/fgdata
+- flight-test-engineering/PSim-RCAM
+- sryu1/jsbgym
+- JDatPNW/QPlane
+- OpenVSP/OpenVSP
+
+Use these for:
+
+- fixed-wing FDM structure
+- aircraft performance references
+- general aviation aircraft examples
+- 6-DoF comparison baselines
+- aerodynamic parameter organization
+- validation scenarios
+
+## Helicopter / Rotorcraft
+
+- ArduPilot/ardupilot
+- paparazzi/paparazzi
+- JSBSim-Team/jsbsim
+- DanIsraelMalta/Helicopter-Simulation
+- minsulander/helisharp
+- NASA rotorcraft technical reports
+- Search and Rescue II / sar2 references
+
+Use these for:
+
+- helicopter mode concepts
+- rotorcraft flight dynamics references
+- rotor / tail rotor / hover / forward-flight examples
+- low-confidence code examples only after higher-quality sources have been checked
+
+## Multirotor / UAV Simulation
+
+- ntnu-arl/aerial_gym_simulator
+- PegasusSimulator/PegasusSimulator
+- uzh-rpg/flightmare
+- ethz-asl/rotors_simulator
+- learnsyslab/gym-pybullet-drones
+- spencerfolk/rotorpy
+- microsoft/AirSim
+- iamaisim/ProjectAirSim
+- PX4/jMAVSim
+
+Use these for:
+
+- multirotor simulation references
+- RL environment patterns
+- high-throughput simulation
+- SITL comparison
+- dynamics response validation
+- sensor and visualization examples
+
+## Nano UAV / Low-Level Flight Controllers
+
+- bitcraze/crazyflie-firmware
+- bitcraze/crazyflie-lib-python
+- betaflight/betaflight
+- iNavFlight/inav
+- cleanflight/cleanflight
+- uzh-rpg/agilicious
+
+Use these for:
+
+- low-level controller organization
+- PID/rate loop patterns
+- mixer concepts
+- small UAV constraints
+- agile flight examples
+
+## VTOL / Compound-Wing / Tiltrotor
+
+- byu-magicc/vtolsim
+- PX4/PX4-Autopilot
+- ArduPilot/ardupilot
+- JSBSim-Team/jsbsim
+- FlightGear/fgdata
+
+Use these for:
+
+- transition and back-transition concepts
+- QuadPlane / VTOL phase logic
+- tiltrotor and compound-wing reference behavior
+- validation scenario design
+
+---
+
+# Repository Workflow
+
+This repository is managed with Git, GitHub, Codex, and opencode.
+
+GitHub `origin` is the central source of truth.
+
+The user works on this repository across multiple devices and may use different AI coding tools on different machines.
+
+All agents must follow the synchronization and branch workflow rules below.
+
+---
+
+# Core Rules
+
+1. Always check Git state before editing.
+2. Never edit directly on `main`, `master`, `develop`, or release branches unless the user explicitly asks.
+3. Use one task branch per task.
+4. Preserve all user changes.
+5. Show `git diff` before committing.
+6. Do not force-push unless the user explicitly asks.
+7. Do not delete local or remote branches unless the user explicitly asks.
+8. Never expose secrets, tokens, passwords, or SSH keys.
+9. GitHub `origin` is always the synchronization source of truth.
+10. Different devices and different AI tools may continue work on the same task branch.
+
+---
+
+# Security Rules
+
+Never read, print, copy, modify, or store private credentials.
+
+Forbidden content includes:
+
+- SSH private keys
+- GitHub tokens
+- API keys
+- Passwords
+- `.env` secrets
+- Cloud credentials
+- Database credentials
+
+Never write secrets into:
+
+- `AGENTS.md`
+- README files
+- source code
+- comments
+- prompts
+- logs
+- commits
+
+Use the user's local SSH authentication only.
+
+If secrets are detected, stop and notify the user.
+
+---
+
+# Start-of-Task Checklist
+
+Before editing files, run:
+
+```bash
+git status
+git branch --show-current
+git fetch origin
+git pull --rebase
+```
+
+Then:
+
+* If the working tree has uncommitted user changes, stop and ask before editing.
+* If the current branch is `main`, `master`, `develop`, or a release branch, create a task branch before editing.
+* If the repository is empty and the user explicitly asks for the initial setup, creating and pushing the initial commit to `main` is allowed.
+* If a suitable task branch already exists, continue using it.
+* If no suitable task branch exists, create one using the branch naming rules below.
+
+---
+
+# Branch Naming Rules
+
+Branch names are based on the task, not the AI tool.
+
+Codex and opencode may work on the same task branch at different times.
+
+Use these branch patterns:
+
+```text
+docs/xxx
+fix/xxx
+feature/xxx
+refactor/xxx
+```
+
+Examples:
+
+```text
+docs/add-agents
+fix/login-timeout
+feature/homepage
+refactor/api-client
+```
+
+Rules:
+
+* One task = one branch.
+* The same branch may be continued from different devices or tools.
+* Before continuing work on another device, always sync with GitHub first.
+* Never work on the same branch simultaneously from multiple devices.
+* Use lowercase English.
+* Use hyphens `-` between words.
+* Do not use Chinese characters.
+* Keep branch names short and descriptive.
+
+---
+
+# Multi-Device Workflow
+
+The user works across multiple devices.
+
+GitHub `origin` is the mandatory synchronization point.
+
+Before starting work on any device, always run:
+
+```bash
+git fetch origin
+git pull --rebase
+git status
+```
+
+Before leaving a device, always:
+
+```bash
+git status
+git diff
+git add -A
+git commit -m "wip: short description"
+git push
+```
+
+This ensures the next device can continue from the latest branch state safely.
+
+If work should not be committed yet:
+
+```bash
+git stash push -m "wip: short description"
+```
+
+However, committing and pushing work-in-progress changes is preferred for multi-device continuity.
+
+Never continue work on another device before syncing from GitHub.
+
+---
+
+# Natural Language Device-Switch Commands
+
+The user may use natural language indicating they are leaving or switching devices.
+
+Examples include:
+
+```text
+我要离开了
+我要换电脑了
+我准备去另一台设备继续
+我要关机了
+我要切换设备
+I'm leaving this device
+I'm switching devices
+Continue later on another machine
+```
+
+When the user expresses this intent:
+
+1. Run:
+
+```bash
+git status
+git diff
+```
+
+2. Stage all relevant changes:
+
+```bash
+git add -A
+```
+
+3. Create a work-in-progress commit if needed:
+
+```bash
+git commit -m "wip: short description"
+```
+
+4. Push the current branch:
+
+```bash
+git push
+```
+
+Then summarize:
+
+```text
+Current branch:
+Commit created:
+Push status:
+Safe to continue from another device.
+```
+
+---
+
+# New Device Startup Workflow
+
+When starting work on a new device, or when the user indicates they switched devices, examples include:
+
+```text
+我到新设备了
+我在另一台电脑上
+继续之前的工作
+同步最新代码
+I'm on another device now
+Continue previous work
+Sync latest changes
+```
+
+Automatically run:
+
+```bash
+git fetch origin
+git pull --rebase
+git status
+```
+
+Then summarize:
+
+```text
+Current branch:
+Sync status:
+Local status:
+Ready to continue working.
+```
+
+---
+
+# Editing Rules
+
+Make minimal, focused changes.
+
+Do:
+
+* Follow the existing project style.
+* Keep changes related to the current task.
+* Prefer small, reviewable edits.
+* Update documentation when behavior changes.
+* Run the smallest relevant verification command.
+* Make every changed line map back to the current task.
+* Remove only code, imports, comments, or files made unused by your own change.
+
+Do not:
+
+* Reformat unrelated files.
+* Improve adjacent code, comments, naming, or formatting just because you noticed it.
+* Change unrelated dependencies.
+* Modify lockfiles unless dependency changes require it.
+* Delete files unless the task clearly requires it.
+* Rename files unnecessarily.
+* Mix unrelated refactors with feature work.
+* Add speculative extension points, configuration, or abstractions for one-off needs.
+* Remove pre-existing dead code unless the user asks for cleanup.
+* Run destructive production, database, or deployment commands.
+
+---
+
+# Review Rules
+
+After editing, run:
+
+```bash
+git status
+git diff
+```
+
+Then report:
+
+```text
+Current branch:
+Files changed:
+Summary:
+Verification:
+Risks / follow-up:
+```
+
+---
+
+# Commit Rules
+
+Prefer small commits.
+
+Suggested commit types:
+
+```text
+docs:
+fix:
+feat:
+refactor:
+chore:
+wip:
+```
+
+Examples:
+
+```text
+docs: add agent workflow rules
+fix: handle login timeout
+feat: add settings page
+refactor: simplify api client
+wip: continue homepage implementation
+```
+
+Before committing:
+
+```bash
+git status
+git diff
+```
+
+Stage only relevant files whenever practical.
+
+---
+
+# Push Rules
+
+Push only the current task branch.
+
+Never force-push unless the user explicitly approves.
+
+Never delete remote branches unless the user explicitly approves.
+
+After pushing, suggest opening a GitHub pull request when appropriate.
+
+For the initial empty repository setup only, pushing `main` is allowed if the user explicitly requested the first push.
+
+---
+
+# Branch Completion Rules
+
+After a task branch is finished:
+
+1. Verify the feature or fix.
+2. Show `git status`.
+3. Show `git diff` or summarize the final changes.
+4. Commit final changes.
+5. Push the branch.
+6. Recommend opening a pull request into `main`.
+
+After the branch has been merged into `main`, recommend deleting the completed branch.
+
+Do not delete branches automatically.
+
+Recommended cleanup after merge:
+
+```bash
+git checkout main
+git pull --rebase origin main
+git branch -d branch-name
+git push origin --delete branch-name
+```
+
+If the branch has not been merged, do not delete it.
+
+---
+
+# Parallel Agent Workflow
+
+Do not let multiple AI agents edit the same local folder simultaneously.
+
+Example of one local working folder:
+
+```text
+E:\GithubProjects\LightBlueSky
+```
+
+Do not run Codex and opencode at the same time inside this same folder.
+
+This may cause:
+
+* file overwrite conflicts
+* inconsistent diffs
+* corrupted working state
+* accidental staging conflicts
+
+If multiple AI agents are needed simultaneously, create separate local working folders.
+
+Example:
+
+```text
+E:\GithubProjects\LightBlueSky-codex
+E:\GithubProjects\LightBlueSky-opencode
+```
+
+Both folders may connect to the same GitHub repository, but should use separate branches.
+
+---
+
+# Stop Conditions
+
+Stop and ask the user before continuing if:
+
+* The working tree contains unknown uncommitted changes.
+* The current branch is protected and no task branch exists.
+* A command may overwrite, reset, delete, or discard work.
+* Merge or rebase conflicts appear.
+* Secrets or credentials are detected.
+* A command requires force-push.
+* A command affects production, deployment, billing, database state, or external services.
+* The requested task is ambiguous and could cause broad unintended changes.
+
+---
+
+# Default Agent Response Format
+
+When reporting back, use:
+
+```text
+Current branch:
+Files changed:
+Summary:
+Verification:
+Risks / follow-up:
+```
+
+Keep responses concise and action-oriented.
