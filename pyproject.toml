@@ -19,6 +19,9 @@ dependencies = [
     "shapely>=2.0",
 ]
 
+[project.scripts]
+lightbluesky-build-region = "lightbluesky_map.build_region:main"
+
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",

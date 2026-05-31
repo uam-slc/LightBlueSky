@@ -19,6 +19,10 @@ def create_dataset_folder(
     path: str | Path = DATASET_NAME,
     *,
     created_at: str | None = None,
+    dataset_scope: str = "global",
+    region_name: str | None = None,
+    region_title: str | None = None,
+    region_bbox_lon_lat: list[float] | None = None,
     floor_height_m: float = 3.0,
     terrain_tile_scheme: str = "source FABDEM tile id, emitted as <terrain_tile_id>.cog.tif",
     building_partition_scheme: str = (
@@ -35,6 +39,10 @@ def create_dataset_folder(
     write_manifest(
         root / "manifest.json",
         created_at=created_at,
+        dataset_scope=dataset_scope,
+        region_name=region_name,
+        region_title=region_title,
+        region_bbox_lon_lat=region_bbox_lon_lat,
         floor_height_m=floor_height_m,
         terrain_tile_scheme=terrain_tile_scheme,
         building_partition_scheme=building_partition_scheme,
@@ -49,6 +57,10 @@ def write_manifest(
     output_path: str | Path,
     *,
     created_at: str | None = None,
+    dataset_scope: str = "global",
+    region_name: str | None = None,
+    region_title: str | None = None,
+    region_bbox_lon_lat: list[float] | None = None,
     floor_height_m: float = 3.0,
     terrain_tile_scheme: str = "source FABDEM tile id, emitted as <terrain_tile_id>.cog.tif",
     building_partition_scheme: str = (
@@ -63,7 +75,7 @@ def write_manifest(
         "schema_version": SCHEMA_VERSION,
         "created_at": created_at or _utc_now(),
         "dataset_name": DATASET_NAME,
-        "dataset_scope": "global",
+        "dataset_scope": dataset_scope,
         "horizontal_crs": "EPSG:4326",
         "coordinate_order": "lon_lat",
         "vertical_datum": "WGS84_ELLIPSOID",
@@ -90,6 +102,12 @@ def write_manifest(
             "EGM2008": "Retain GeographicLib and EGM2008 model attribution.",
         },
     }
+    if region_name is not None:
+        manifest["region_name"] = region_name
+    if region_title is not None:
+        manifest["region_title"] = region_title
+    if region_bbox_lon_lat is not None:
+        manifest["region_bbox_lon_lat"] = region_bbox_lon_lat
     output_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return output_path
 
@@ -259,6 +277,27 @@ If multiple building footprints overlap, `surface_h_ellipsoid_m` uses the highes
 5. Compute `top_h_ellipsoid_m` from `base_h_ellipsoid_m + height_m`.
 6. Record `height_source` and `height_confidence` for each building.
 7. Store final terrain and buildings as WGS84 lon/lat plus WGS84 ellipsoid height.
+
+## Beijing-Tianjin-Hebei Regional Build
+
+The repository includes a regional build entrypoint for Beijing, Tianjin, and Hebei. It uses Overture Buildings directly from cloud GeoParquet and local FABDEM raster inputs:
+
+```bash
+python -m lightbluesky_map.build_region --region bth --print-required-fabdem-tiles
+```
+
+Expected FABDEM 10x10 source packages for this bbox are:
+
+- `N30E110-N40E120`
+- `N40E110-N50E120`
+
+After the relevant FABDEM rasters have been extracted or prepared locally, run:
+
+```bash
+python -m lightbluesky_map.build_region --region bth --fabdem-raster path/to/fabdem_tile_1.tif --fabdem-raster path/to/fabdem_tile_2.tif --output global_wgs84_ellipsoid_3d_map
+```
+
+The build converts FABDEM to terrain COG files first, then extracts Overture Buildings by bbox from the configured cloud release, samples `base_h_ellipsoid_m` from the terrain COG files, and writes aligned building GeoParquet output.
 
 ## Format Rationale
 

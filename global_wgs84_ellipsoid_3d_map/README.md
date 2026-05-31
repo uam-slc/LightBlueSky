@@ -156,6 +156,27 @@ If multiple building footprints overlap, `surface_h_ellipsoid_m` uses the highes
 6. Record `height_source` and `height_confidence` for each building.
 7. Store final terrain and buildings as WGS84 lon/lat plus WGS84 ellipsoid height.
 
+## Beijing-Tianjin-Hebei Regional Build
+
+The repository includes a regional build entrypoint for Beijing, Tianjin, and Hebei. It uses Overture Buildings directly from cloud GeoParquet and local FABDEM raster inputs:
+
+```bash
+python -m lightbluesky_map.build_region --region bth --print-required-fabdem-tiles
+```
+
+Expected FABDEM 10x10 source packages for this bbox are:
+
+- `N30E110-N40E120`
+- `N40E110-N50E120`
+
+After the relevant FABDEM rasters have been extracted or prepared locally, run:
+
+```bash
+python -m lightbluesky_map.build_region --region bth --fabdem-raster path/to/fabdem_tile_1.tif --fabdem-raster path/to/fabdem_tile_2.tif --output global_wgs84_ellipsoid_3d_map
+```
+
+The build converts FABDEM to terrain COG files first, then extracts Overture Buildings by bbox from the configured cloud release, samples `base_h_ellipsoid_m` from the terrain COG files, and writes aligned building GeoParquet output.
+
 ## Format Rationale
 
 Terrain uses Cloud Optimized GeoTIFF because COG supports global tiling, windowed reads, rasterio/GDAL access, georeferencing, metadata, and NoData preservation.

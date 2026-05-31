@@ -11,6 +11,12 @@ from lightbluesky_map.buildings import (
 )
 from lightbluesky_map.dataset import create_dataset_folder, readme_text
 from lightbluesky_map.geoid import ConstantGeoidProvider
+from lightbluesky_map.overture import (
+    DEFAULT_OVERTURE_RELEASE,
+    overture_buildings_bbox_sql,
+    overture_buildings_cloud_path,
+)
+from lightbluesky_map.regions import get_region, parse_bbox
 from lightbluesky_map.terrain import (
     convert_fabdem_tile_to_ellipsoid_cog,
     fabdem_orthometric_to_ellipsoid,
@@ -73,6 +79,52 @@ def test_manifest_generation(tmp_path) -> None:
     assert manifest["geoid_model"] == "EGM2008"
     assert manifest["geoid_provider"] == "GeographicLib"
     assert manifest["floor_height_m"] == 3.0
+
+
+def test_regional_manifest_generation(tmp_path) -> None:
+    region = get_region("bth")
+    root = create_dataset_folder(
+        tmp_path / "global_wgs84_ellipsoid_3d_map",
+        created_at="2026-05-31T00:00:00Z",
+        dataset_scope="regional",
+        region_name=region.name,
+        region_title=region.title,
+        region_bbox_lon_lat=list(region.bbox),
+    )
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["dataset_scope"] == "regional"
+    assert manifest["region_name"] == "beijing-tianjin-hebei"
+    assert manifest["region_bbox_lon_lat"] == [113.0, 36.0, 120.0, 42.8]
+
+
+def test_bth_region_declares_required_fabdem_tiles() -> None:
+    region = get_region("bth")
+
+    assert region.bbox == (113.0, 36.0, 120.0, 42.8)
+    assert region.fabdem_10x10_tile_ids == (
+        "N30E110-N40E120",
+        "N40E110-N50E120",
+    )
+    assert parse_bbox("113,36,120,42.8") == region.bbox
+
+
+def test_overture_cloud_path_and_bbox_sql() -> None:
+    cloud_path = overture_buildings_cloud_path(
+        release=DEFAULT_OVERTURE_RELEASE,
+        provider="azure",
+    )
+    sql = overture_buildings_bbox_sql(
+        cloud_path=cloud_path,
+        bbox=(113.0, 36.0, 120.0, 42.8),
+        output_path="data/work/bth.geoparquet",
+    )
+
+    assert "az://release/2026-05-20.0/theme=buildings/type=building/*.parquet" in sql
+    assert "bbox.xmin <= 120.0" in sql
+    assert "bbox.xmax >= 113.0" in sql
+    assert "bbox.ymin <= 42.8" in sql
+    assert "bbox.ymax >= 36.0" in sql
 
 
 def test_readme_contains_required_semantics() -> None:
