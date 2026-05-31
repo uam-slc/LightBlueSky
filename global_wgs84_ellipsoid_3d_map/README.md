@@ -1,6 +1,6 @@
 # global_wgs84_ellipsoid_3d_map
 
-This folder is a global three-dimensional map dataset contract for low-altitude traffic management simulation. It stores terrain and building surfaces in one coordinate and height convention:
+This folder is the WGS84 ellipsoid-height three-dimensional map dataset contract for low-altitude traffic management simulation. The same schema supports global datasets and regional cuts such as Beijing-Tianjin-Hebei; check `manifest.json` for the actual `dataset_scope` and optional region fields. It stores terrain and building surfaces in one coordinate and height convention:
 
 - lon: WGS84 longitude.
 - lat: WGS84 latitude.
@@ -12,6 +12,7 @@ This folder is a global three-dimensional map dataset contract for low-altitude 
 - `manifest.json`: machine-readable dataset metadata.
 - `terrain/<terrain_tile_id>.cog.tif`: terrain Cloud Optimized GeoTIFF tiles.
 - `buildings/<building_partition_id>.geoparquet`: building footprint and height partitions.
+- `OVERTURE_CLOUD.md`: cloud and local Overture Buildings input instructions.
 
 ## Terrain Data
 

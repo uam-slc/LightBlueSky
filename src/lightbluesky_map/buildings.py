@@ -103,8 +103,7 @@ def build_buildings_geodataframe(
 ) -> Any:
     """Read Overture buildings, normalize heights, and sample base heights."""
 
-    gpd = _require_geopandas()
-    buildings = gpd.read_parquet(overture_buildings_path)
+    buildings = _read_overture_buildings(overture_buildings_path)
     if buildings.crs is None:
         buildings = buildings.set_crs("EPSG:4326")
     else:
@@ -256,3 +255,42 @@ def _require_geopandas():
     except ImportError as exc:
         raise ImportError("geopandas is required for building GeoParquet IO") from exc
     return gpd
+
+
+def _read_overture_buildings(path: str | Path) -> Any:
+    gpd = _require_geopandas()
+    try:
+        buildings = gpd.read_parquet(path)
+        if "geometry" in buildings.columns:
+            return buildings
+    except Exception:
+        pass
+
+    try:
+        import pandas as pd
+        from shapely import wkb
+    except ImportError as exc:
+        raise ImportError(
+            "pandas and shapely are required to read raw Overture WKB parquet"
+        ) from exc
+
+    frame = pd.read_parquet(path)
+    if "geometry" not in frame.columns:
+        raise ValueError("Overture buildings input must contain a geometry column")
+    frame["geometry"] = frame["geometry"].map(_load_wkb_geometry(wkb))
+    return gpd.GeoDataFrame(frame, geometry="geometry", crs="EPSG:4326")
+
+
+def _load_wkb_geometry(wkb_module):
+    def load(value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, memoryview):
+            value = value.tobytes()
+        if isinstance(value, bytearray):
+            value = bytes(value)
+        if isinstance(value, str):
+            return wkb_module.loads(bytes.fromhex(value))
+        return wkb_module.loads(value)
+
+    return load

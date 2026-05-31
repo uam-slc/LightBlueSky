@@ -157,6 +157,7 @@ def convert_fabdem_tile_to_ellipsoid_cog(
     output_path: str | Path,
     *,
     geoid_provider: GeoidProvider | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
 ) -> Path:
     """Convert one FABDEM tile to an EPSG:4326 ellipsoid-height COG."""
 
@@ -186,7 +187,22 @@ def convert_fabdem_tile_to_ellipsoid_cog(
             )
         else:
             transform = src.transform
-            data = src.read(1).astype("float64")
+            if bbox is None:
+                data = src.read(1).astype("float64")
+            else:
+                from rasterio.windows import from_bounds
+
+                min_lon, min_lat, max_lon, max_lat = bbox
+                window = from_bounds(
+                    min_lon,
+                    min_lat,
+                    max_lon,
+                    max_lat,
+                    transform=src.transform,
+                )
+                window = window.round_offsets().round_lengths()
+                data = src.read(1, window=window).astype("float64")
+                transform = src.window_transform(window)
 
     valid_mask = _valid_terrain_mask(data, nodata)
     lon, lat = pixel_center_lon_lat(transform, data.shape[1], data.shape[0])

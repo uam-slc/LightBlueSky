@@ -19,6 +19,8 @@ def build_region_dataset(
     fabdem_rasters: list[str | Path],
     output_dir: str | Path = DATASET_NAME,
     work_dir: str | Path = "data/work",
+    overture_buildings_local: str | Path | None = None,
+    overture_raw_output: str | Path | None = None,
     overture_release: str = DEFAULT_OVERTURE_RELEASE,
     overture_provider: str = "azure",
     floor_height_m: float = 3.0,
@@ -77,17 +79,24 @@ def build_region_dataset(
             source,
             terrain_path,
             geoid_provider=geoid_provider,
+            bbox=region.bbox,
         )
         terrain_paths.append(terrain_path)
 
-    raw_overture_path = work_root / f"{region.name}_overture_buildings_raw.geoparquet"
-    extract_overture_buildings_for_bbox(
-        raw_overture_path,
-        bbox=region.bbox,
-        release=overture_release,
-        provider=overture_provider,
-        include_parts=include_building_parts,
-    )
+    if overture_buildings_local is None:
+        raw_overture_path = Path(
+            overture_raw_output
+            or work_root / f"{region.name}_overture_buildings_raw.geoparquet"
+        )
+        extract_overture_buildings_for_bbox(
+            raw_overture_path,
+            bbox=region.bbox,
+            release=overture_release,
+            provider=overture_provider,
+            include_parts=include_building_parts,
+        )
+    else:
+        raw_overture_path = Path(overture_buildings_local)
 
     convert_overture_buildings_to_geoparquet(
         raw_overture_path,
@@ -115,6 +124,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--output", default=DATASET_NAME)
     parser.add_argument("--work-dir", default="data/work")
+    parser.add_argument(
+        "--overture-buildings-local",
+        help=(
+            "Local Overture Buildings GeoParquet to align. If omitted, the "
+            "builder extracts the region from Overture cloud storage."
+        ),
+    )
+    parser.add_argument(
+        "--overture-raw-output",
+        help=(
+            "Where to write the cloud-extracted raw Overture regional "
+            "GeoParquet before terrain alignment."
+        ),
+    )
     parser.add_argument("--overture-release", default=DEFAULT_OVERTURE_RELEASE)
     parser.add_argument(
         "--overture-provider",
@@ -123,6 +146,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--floor-height-m", type=float, default=3.0)
     parser.add_argument("--include-building-parts", action="store_true")
+    parser.add_argument(
+        "--download-overture-only",
+        action="store_true",
+        help=(
+            "Only extract regional Overture Buildings from cloud storage, then exit."
+        ),
+    )
     parser.add_argument(
         "--print-required-fabdem-tiles",
         action="store_true",
@@ -144,11 +174,28 @@ def main(argv: list[str] | None = None) -> int:
             print(tile_id)
         return 0
 
+    if args.download_overture_only:
+        output = Path(
+            args.overture_raw_output
+            or Path(args.work_dir) / f"{region.name}_overture_buildings_raw.geoparquet"
+        )
+        extract_overture_buildings_for_bbox(
+            output,
+            bbox=region.bbox,
+            release=args.overture_release,
+            provider=args.overture_provider,
+            include_parts=args.include_building_parts,
+        )
+        print(output)
+        return 0
+
     build_region_dataset(
         region=region,
         fabdem_rasters=args.fabdem_raster,
         output_dir=args.output,
         work_dir=args.work_dir,
+        overture_buildings_local=args.overture_buildings_local,
+        overture_raw_output=args.overture_raw_output,
         overture_release=args.overture_release,
         overture_provider=args.overture_provider,
         floor_height_m=args.floor_height_m,
