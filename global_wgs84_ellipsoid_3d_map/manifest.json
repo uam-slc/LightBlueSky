@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "created_at": "2026-05-31T03:32:56Z",
+  "created_at": "2026-05-31T05:32:06Z",
   "dataset_name": "global_wgs84_ellipsoid_3d_map",
   "dataset_scope": "regional",
   "horizontal_crs": "EPSG:4326",
@@ -12,14 +12,40 @@
   "terrain_source": "FABDEM",
   "buildings_source": "Overture Maps Buildings",
   "geoid_model": "EGM2008",
-  "geoid_provider": "GeographicLib",
+  "geoid_provider": "GeographicLib/PROJ",
   "floor_height_m": 3.0,
-  "terrain_tile_scheme": "source FABDEM tile id, emitted as <terrain_tile_id>.cog.tif",
-  "building_partition_scheme": "source Overture partition id, emitted as <building_partition_id>.geoparquet",
+  "terrain_tile_scheme": "beijing-tianjin-hebei clipped/source FABDEM rasters, emitted as <terrain_tile_id>.cog.tif",
+  "building_partition_scheme": "beijing-tianjin-hebei Overture bbox partition, emitted as <building_partition_id>.geoparquet",
   "generation_parameters": {
+    "region_name": "beijing-tianjin-hebei",
+    "region_title": "Beijing, Tianjin, and Hebei",
+    "bbox_lon_lat": [
+      113.0,
+      36.0,
+      120.0,
+      42.8
+    ],
+    "required_fabdem_10x10_tile_ids": [
+      "N30E110-N40E120",
+      "N40E110-N50E120"
+    ],
+    "overture_release": "2026-05-20.0",
+    "overture_provider": "https-azure",
+    "terrain_cog_count": 48,
+    "terrain_cog_bytes": 2659119611,
+    "buildings_partition_count": 1,
+    "buildings_record_count": 34092933,
+    "buildings_geoparquet_bytes": 3155437026,
+    "buildings_with_base_h_ellipsoid_m": 34090682,
+    "buildings_with_height_m": 28456,
+    "buildings_with_top_h_ellipsoid_m": 28456,
+    "extracted_fabdem_1x1_tile_count": 48,
+    "missing_fabdem_1x1_tiles": [
+      "N38E119_FABDEM_V1-2.tif"
+    ],
     "terrain_height_formula": "terrain_h_ellipsoid_m = H_fabdem_m + N_egm2008_m",
     "building_top_formula": "top_h_ellipsoid_m = base_h_ellipsoid_m + height_m",
-    "terrain_sample_method_default": "footprint_points_median"
+    "terrain_sample_method_default": "bbox_center_pixel"
   },
   "license_and_attribution": {
     "FABDEM": "Retain FABDEM license and attribution from the source distribution.",

@@ -77,7 +77,7 @@ def test_manifest_generation(tmp_path) -> None:
     assert manifest["terrain_source"] == "FABDEM"
     assert manifest["buildings_source"] == "Overture Maps Buildings"
     assert manifest["geoid_model"] == "EGM2008"
-    assert manifest["geoid_provider"] == "GeographicLib"
+    assert manifest["geoid_provider"] == "GeographicLib/PROJ"
     assert manifest["floor_height_m"] == 3.0
 
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .buildings import convert_overture_buildings_to_geoparquet
+from .buildings import write_aligned_buildings_from_overture_parquet_streaming
 from .dataset import DATASET_NAME, create_dataset_folder
-from .geoid import EGM2008GeoidProvider
+from .geoid import get_default_geoid_provider
 from .overture import DEFAULT_OVERTURE_RELEASE, extract_overture_buildings_for_bbox
 from .regions import RegionSpec, get_region, parse_bbox
 from .terrain import convert_fabdem_tile_to_ellipsoid_cog
@@ -22,7 +22,7 @@ def build_region_dataset(
     overture_buildings_local: str | Path | None = None,
     overture_raw_output: str | Path | None = None,
     overture_release: str = DEFAULT_OVERTURE_RELEASE,
-    overture_provider: str = "azure",
+    overture_provider: str = "https-azure",
     floor_height_m: float = 3.0,
     include_building_parts: bool = False,
 ) -> Path:
@@ -69,7 +69,7 @@ def build_region_dataset(
     work_root = Path(work_dir)
     work_root.mkdir(parents=True, exist_ok=True)
 
-    geoid_provider = EGM2008GeoidProvider()
+    geoid_provider = get_default_geoid_provider()
     terrain_paths = []
     for fabdem_raster in fabdem_rasters:
         source = Path(fabdem_raster)
@@ -98,7 +98,7 @@ def build_region_dataset(
     else:
         raw_overture_path = Path(overture_buildings_local)
 
-    convert_overture_buildings_to_geoparquet(
+    write_aligned_buildings_from_overture_parquet_streaming(
         raw_overture_path,
         terrain_paths,
         output_root / "buildings" / f"{region.name}.geoparquet",
@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--overture-release", default=DEFAULT_OVERTURE_RELEASE)
     parser.add_argument(
         "--overture-provider",
-        default="azure",
+        default="https-azure",
         choices=("azure", "s3", "https-azure"),
     )
     parser.add_argument("--floor-height-m", type=float, default=3.0)

@@ -14,6 +14,19 @@ This folder is the WGS84 ellipsoid-height three-dimensional map dataset contract
 - `buildings/<building_partition_id>.geoparquet`: building footprint and height partitions.
 - `OVERTURE_CLOUD.md`: cloud and local Overture Buildings input instructions.
 
+## Generated Beijing-Tianjin-Hebei Dataset
+
+This checkout contains a generated Beijing-Tianjin-Hebei regional cut:
+
+- Region bbox: `min_lon=113.0`, `min_lat=36.0`, `max_lon=120.0`, `max_lat=42.8`.
+- Terrain output: 48 COG files under `terrain/`, total 2,659,119,611 bytes.
+- Building output: `buildings/beijing-tianjin-hebei.geoparquet`, 34,092,933 records, 3,155,437,026 bytes.
+- Buildings with sampled `base_h_ellipsoid_m`: 34,090,682.
+- Buildings with usable `height_m` and `top_h_ellipsoid_m`: 28,456.
+- Building base sampling method for this generated cut: `bbox_center_pixel`.
+
+The FABDEM package `N30E110-N40E120_FABDEM_V1-2.zip` does not contain `N38E119_FABDEM_V1-2.tif`; terrain coverage therefore has that source tile gap. The generated buildings layer still retains affected footprints, but records without terrain under the bbox center have null `base_h_ellipsoid_m` and null `top_h_ellipsoid_m`.
+
 ## Terrain Data
 
 Each terrain COG uses CRS `EPSG:4326`, coordinate order `lon_lat`, and band name `terrain_h_ellipsoid_m`. Pixel values are WGS84 ellipsoid heights in meters:
@@ -22,7 +35,7 @@ Each terrain COG uses CRS `EPSG:4326`, coordinate order `lon_lat`, and band name
 terrain_h_ellipsoid_m = H_fabdem_m + N_egm2008_m
 ```
 
-`H_fabdem_m` is the FABDEM source elevation treated as an EGM2008 orthometric height. `N_egm2008_m` is the EGM2008 geoid separation from GeographicLib or a compatible interpolator. NoData values are preserved.
+`H_fabdem_m` is the FABDEM source elevation treated as an EGM2008 orthometric height. `N_egm2008_m` is the EGM2008 geoid separation from GeographicLib or a compatible PROJ/pyproj interpolator. NoData values are preserved.
 
 ## Buildings Data
 
@@ -186,6 +199,32 @@ Buildings use GeoParquet because it supports large vector partitions, geometry a
 
 ## Python Reading Examples
 
+Use the helper API for simple point queries:
+
+```python
+from lightbluesky_map import open_dataset
+
+lon, lat = 116.4074, 39.9042
+
+with open_dataset("global_wgs84_ellipsoid_3d_map") as dataset:
+    terrain_h = dataset.sample_terrain(lon, lat)
+    buildings = dataset.query_buildings(lon, lat)
+    surface_h = dataset.sample_surface(lon, lat)
+
+print("terrain_h_ellipsoid_m:", terrain_h)
+print(buildings[[
+    "id",
+    "height_m",
+    "base_h_ellipsoid_m",
+    "top_h_ellipsoid_m",
+    "height_source",
+    "height_confidence",
+]])
+print("surface_h_ellipsoid_m:", surface_h)
+```
+
+Read terrain directly with rasterio:
+
 ```python
 import rasterio
 
@@ -208,4 +247,33 @@ print(buildings[[
     "base_h_ellipsoid_m",
     "top_h_ellipsoid_m",
 ]].head())
+```
+
+For this large generated building partition, prefer DuckDB for filtering instead of loading all 34 million records into GeoPandas:
+
+```python
+import duckdb
+
+lon, lat = 116.4074, 39.9042
+
+con = duckdb.connect()
+con.execute("INSTALL spatial;")
+con.execute("LOAD spatial;")
+
+rows = con.execute(
+    '''
+    SELECT
+        id,
+        height_m,
+        base_h_ellipsoid_m,
+        top_h_ellipsoid_m,
+        height_source,
+        height_confidence
+    FROM read_parquet('global_wgs84_ellipsoid_3d_map/buildings/beijing-tianjin-hebei.geoparquet')
+    WHERE ST_Covers(geometry, ST_Point(?, ?))
+    ''',
+    [lon, lat],
+).fetchdf()
+
+print(rows)
 ```

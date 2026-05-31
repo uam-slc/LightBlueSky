@@ -88,6 +88,45 @@ class EGM2008GeoidProvider:
 
 
 @dataclass(frozen=True)
+class PyProjEGM2008GeoidProvider:
+    """PROJ/pyproj EGM2008-compatible geoid provider.
+
+    This transforms a zero EGM2008 orthometric height from the compound CRS
+    ``EPSG:4326+3855`` to WGS84 ellipsoid height ``EPSG:4979``. The returned
+    ellipsoid height is the geoid separation ``N_egm2008_m``.
+    """
+
+    network_enabled: bool = True
+
+    def _transformer(self):
+        try:
+            from pyproj import Transformer, network
+        except ImportError as exc:
+            raise GeoidModelUnavailable(
+                "pyproj is required for the PROJ EGM2008 geoid provider"
+            ) from exc
+
+        network.set_network_enabled(self.network_enabled)
+        return Transformer.from_crs("EPSG:4326+3855", "EPSG:4979", always_xy=True)
+
+    def separation(self, lat_deg: float, lon_deg: float) -> float:
+        transformer = self._transformer()
+        _, _, h_ellipsoid_m = transformer.transform(
+            float(lon_deg), float(lat_deg), 0.0
+        )
+        return float(h_ellipsoid_m)
+
+    def separations(
+        self, lat_deg: Iterable[float], lon_deg: Iterable[float]
+    ) -> list[float]:
+        transformer = self._transformer()
+        lon_values = list(lon_deg)
+        lat_values = list(lat_deg)
+        _, _, h_values = transformer.transform(lon_values, lat_values, [0.0] * len(lon_values))
+        return [float(value) for value in h_values]
+
+
+@dataclass(frozen=True)
 class ConstantGeoidProvider:
     """Small deterministic provider used by tests and examples."""
 
@@ -108,7 +147,10 @@ _DEFAULT_PROVIDER: GeoidProvider | None = None
 def get_default_geoid_provider() -> GeoidProvider:
     global _DEFAULT_PROVIDER
     if _DEFAULT_PROVIDER is None:
-        _DEFAULT_PROVIDER = EGM2008GeoidProvider()
+        if shutil.which("GeoidEval") is not None:
+            _DEFAULT_PROVIDER = EGM2008GeoidProvider()
+        else:
+            _DEFAULT_PROVIDER = PyProjEGM2008GeoidProvider()
     return _DEFAULT_PROVIDER
 
 

@@ -4,3 +4,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 data/
+src/*.egg-info/
+global_wgs84_ellipsoid_3d_map/terrain/*.cog.tif
+global_wgs84_ellipsoid_3d_map/buildings/*.geoparquet

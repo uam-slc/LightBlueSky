@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 from statistics import median
 from typing import Any, Mapping
@@ -181,6 +182,134 @@ def convert_overture_buildings_to_geoparquet(
     return write_buildings_geoparquet(buildings, output_path)
 
 
+def write_aligned_buildings_from_overture_parquet_streaming(
+    overture_buildings_path: str | Path,
+    terrain_cog_paths: list[str | Path],
+    output_path: str | Path,
+    *,
+    floor_height_m: float = 3.0,
+    batch_size: int = 250_000,
+) -> Path:
+    """Stream-align large Overture parquet files without loading all geometry.
+
+    The production path uses the Overture bbox center as the terrain sample
+    point. This keeps very large regional extracts tractable while preserving
+    the final dataset contract.
+    """
+
+    import numpy as np
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    terrain_index = _RasterTerrainIndex(terrain_cog_paths)
+
+    source = pq.ParquetFile(overture_buildings_path)
+    geo_metadata = _geo_metadata_for_output(source.schema_arrow.metadata or {})
+    schema = pa.schema(
+        [
+            ("id", pa.string()),
+            ("geometry", pa.binary()),
+            ("height_m", pa.float64()),
+            ("height_source", pa.string()),
+            ("height_confidence", pa.string()),
+            ("base_h_ellipsoid_m", pa.float64()),
+            ("top_h_ellipsoid_m", pa.float64()),
+            ("terrain_sample_method", pa.string()),
+            ("source", pa.string()),
+            ("properties_json", pa.string()),
+        ],
+        metadata=geo_metadata,
+    )
+
+    columns = ["id", "geometry", "height", "num_floors", "bbox", "subtype", "class"]
+    with pq.ParquetWriter(
+        output_path,
+        schema=schema,
+        compression="zstd",
+        use_dictionary=True,
+    ) as writer:
+        for batch in source.iter_batches(batch_size=batch_size, columns=columns):
+            n = batch.num_rows
+            names = batch.schema.names
+            id_array = batch.column(names.index("id"))
+            geometry_array = batch.column(names.index("geometry"))
+            bbox_array = batch.column(names.index("bbox"))
+            height = _arrow_numeric_column(batch, names, "height", n)
+            num_floors = _arrow_numeric_column(batch, names, "num_floors", n)
+            subtype = _arrow_string_column(batch, names, "subtype", n)
+            class_name = _arrow_string_column(batch, names, "class", n)
+
+            xmin = bbox_array.field("xmin").to_numpy(zero_copy_only=False)
+            xmax = bbox_array.field("xmax").to_numpy(zero_copy_only=False)
+            ymin = bbox_array.field("ymin").to_numpy(zero_copy_only=False)
+            ymax = bbox_array.field("ymax").to_numpy(zero_copy_only=False)
+            lon = (xmin + xmax) / 2.0
+            lat = (ymin + ymax) / 2.0
+            base = terrain_index.sample_many(lon, lat)
+
+            height_valid = np.isfinite(height) & (height > 0)
+            floors_valid = np.isfinite(num_floors) & (num_floors > 0)
+            height_m = np.full(n, np.nan, dtype="float64")
+            height_m[height_valid] = height[height_valid]
+            floor_only = ~height_valid & floors_valid
+            height_m[floor_only] = num_floors[floor_only] * float(floor_height_m)
+
+            top = np.full(n, np.nan, dtype="float64")
+            top_valid = np.isfinite(base) & np.isfinite(height_m)
+            top[top_valid] = base[top_valid] + height_m[top_valid]
+
+            height_source = np.full(n, "missing", dtype=object)
+            height_source[height_valid] = "height"
+            height_source[floor_only] = "num_floors"
+            height_confidence = np.full(n, "none", dtype=object)
+            height_confidence[height_valid] = "high"
+            height_confidence[floor_only] = "medium"
+            sample_method = np.full(n, "bbox_center_pixel", dtype=object)
+            source_name = np.full(n, "Overture Maps Buildings", dtype=object)
+            properties = [
+                _stream_properties_json(subtype[i], class_name[i])
+                for i in range(n)
+            ]
+
+            table = pa.table(
+                {
+                    "id": id_array,
+                    "geometry": geometry_array,
+                    "height_m": pa.array(
+                        height_m,
+                        mask=~np.isfinite(height_m),
+                        type=pa.float64(),
+                    ),
+                    "height_source": pa.array(height_source, type=pa.string()),
+                    "height_confidence": pa.array(
+                        height_confidence, type=pa.string()
+                    ),
+                    "base_h_ellipsoid_m": pa.array(
+                        base,
+                        mask=~np.isfinite(base),
+                        type=pa.float64(),
+                    ),
+                    "top_h_ellipsoid_m": pa.array(
+                        top,
+                        mask=~np.isfinite(top),
+                        type=pa.float64(),
+                    ),
+                    "terrain_sample_method": pa.array(
+                        sample_method, type=pa.string()
+                    ),
+                    "source": pa.array(source_name, type=pa.string()),
+                    "properties_json": pa.array(properties, type=pa.string()),
+                },
+                schema=schema,
+            )
+            writer.write_table(table)
+
+    terrain_index.close()
+    return output_path
+
+
 def _positive_float(value: Any) -> float | None:
     if value is None:
         return None
@@ -188,7 +317,7 @@ def _positive_float(value: Any) -> float | None:
         parsed = float(value)
     except (TypeError, ValueError):
         return None
-    if parsed <= 0:
+    if not math.isfinite(parsed) or parsed <= 0:
         return None
     return parsed
 
@@ -255,6 +384,91 @@ def _require_geopandas():
     except ImportError as exc:
         raise ImportError("geopandas is required for building GeoParquet IO") from exc
     return gpd
+
+
+class _RasterTerrainIndex:
+    def __init__(self, terrain_paths: list[str | Path]):
+        import rasterio
+
+        self.datasets = [rasterio.open(path) for path in terrain_paths]
+        self.arrays: dict[int, Any] = {}
+
+    def close(self) -> None:
+        for dataset in self.datasets:
+            dataset.close()
+
+    def sample_many(self, lon: Any, lat: Any) -> Any:
+        import numpy as np
+
+        lon = np.asarray(lon, dtype="float64")
+        lat = np.asarray(lat, dtype="float64")
+        result = np.full(lon.shape, np.nan, dtype="float64")
+        for index, dataset in enumerate(self.datasets):
+            bounds = dataset.bounds
+            mask = (
+                np.isnan(result)
+                & (lon >= bounds.left)
+                & (lon < bounds.right)
+                & (lat > bounds.bottom)
+                & (lat <= bounds.top)
+            )
+            if not np.any(mask):
+                continue
+            data = self.arrays.get(index)
+            if data is None:
+                data = dataset.read(1)
+                self.arrays[index] = data
+            transform = dataset.transform
+            cols = np.floor((lon[mask] - transform.c) / transform.a).astype("int64")
+            rows = np.floor((lat[mask] - transform.f) / transform.e).astype("int64")
+            valid = (
+                (rows >= 0)
+                & (rows < data.shape[0])
+                & (cols >= 0)
+                & (cols < data.shape[1])
+            )
+            sampled = np.full(rows.shape, np.nan, dtype="float64")
+            sampled[valid] = data[rows[valid], cols[valid]]
+            if dataset.nodata is not None:
+                sampled[sampled == float(dataset.nodata)] = np.nan
+            result[mask] = sampled
+        return result
+
+
+def _arrow_numeric_column(batch: Any, names: list[str], name: str, n: int) -> Any:
+    import numpy as np
+
+    if name not in names:
+        return np.full(n, np.nan, dtype="float64")
+    values = batch.column(names.index(name)).to_numpy(zero_copy_only=False)
+    return values.astype("float64", copy=False)
+
+
+def _arrow_string_column(batch: Any, names: list[str], name: str, n: int) -> list[Any]:
+    if name not in names:
+        return [None] * n
+    return batch.column(names.index(name)).to_pylist()
+
+
+def _stream_properties_json(subtype: Any, class_name: Any) -> str:
+    props = {}
+    if subtype is not None:
+        props["subtype"] = subtype
+    if class_name is not None:
+        props["class"] = class_name
+    return json.dumps(props, ensure_ascii=True, sort_keys=True)
+
+
+def _geo_metadata_for_output(source_metadata: Mapping[bytes, bytes]) -> dict[bytes, bytes]:
+    if b"geo" in source_metadata:
+        return {b"geo": source_metadata[b"geo"]}
+    return {
+        b"geo": (
+            b'{"version":"1.0.0","primary_column":"geometry","columns":'
+            b'{"geometry":{"encoding":"WKB","geometry_types":["Polygon",'
+            b'"MultiPolygon"],"crs":null}}}'
+        )
+    }
 
 
 def _read_overture_buildings(path: str | Path) -> Any:

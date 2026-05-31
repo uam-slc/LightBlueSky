@@ -29,16 +29,16 @@ The default Overture release is:
 2026-05-20.0
 ```
 
-The default Azure path read by DuckDB is:
-
-```text
-az://release/2026-05-20.0/theme=buildings/type=building/*.parquet
-```
-
-Equivalent HTTPS path:
+The recommended anonymous cloud path is HTTPS Azure Blob. The builder lists parquet objects from the public container and passes the resulting URL list to DuckDB:
 
 ```text
 https://overturemapswestus2.blob.core.windows.net/release/2026-05-20.0/theme=buildings/type=building/*.parquet
+```
+
+The `az://` form is also supported by the code, but DuckDB may require Azure credentials for it in some environments:
+
+```text
+az://release/2026-05-20.0/theme=buildings/type=building/*.parquet
 ```
 
 Equivalent S3 path:

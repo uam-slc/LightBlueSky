@@ -193,6 +193,13 @@ def convert_fabdem_tile_to_ellipsoid_cog(
                 from rasterio.windows import from_bounds
 
                 min_lon, min_lat, max_lon, max_lat = bbox
+                bounds = src.bounds
+                min_lon = max(min_lon, bounds.left)
+                max_lon = min(max_lon, bounds.right)
+                min_lat = max(min_lat, bounds.bottom)
+                max_lat = min(max_lat, bounds.top)
+                if min_lon >= max_lon or min_lat >= max_lat:
+                    raise ValueError(f"{fabdem_tile_path} does not overlap {bbox}")
                 window = from_bounds(
                     min_lon,
                     min_lat,
